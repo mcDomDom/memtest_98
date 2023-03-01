@@ -1239,22 +1239,21 @@ static void cacheable(void)
 /* #define TICKS (65536 - 12752) */
 /* #define TICKS (65536 - 8271) */
 //#define TICKS	59659			/* Program counter to 50 ms = 59659 clks */
-#define TICKS	61440			/* Program counter to 100 ms = 61440 clks */
+#define TICKS	61440			/* Program counter to 25 ms = 61440 clks(PC-98 System Clock 5/10MHz) */
 
 /* Returns CPU clock in khz */
 static int cpuspeed(void)
 {
 	int loops;
 	v->clks_msec = -1;
-	return v->clks_msec;
 
-	// TODO
 	/* Setup timer */
-	//outb(inb(0x02) | 0x01, 0x02);
-	outb(0x30, 0x77);	// counter#0 LSB->MSB mode0
-	outb(TICKS & 0xff, 0x71);	// counter #1 LSB write
-	outb(TICKS >> 8, 0x71);	// counter #1 MSB write
-	//outb(0x06, 0x37);
+	
+	outb(inb(0x7c) & 0xFE, 0x02);	// Set PIC Master IMR M0 Mask Off 
+	outb(0x4E, 0x00);				// Set PIC Master OCW3 Enable IRR Read Polling
+	outb(0x30, 0x77);			// counter #0 LSB->MSB mode0
+	outb(TICKS & 0xff, 0x71);	// counter #0 LSB write
+	outb(TICKS >> 8, 0x71);		// counter #0 MSB write
 
 	asm __volatile__ ("rdtsc":"=a" (st_low),"=d" (st_high));
 
@@ -1271,15 +1270,13 @@ static int cpuspeed(void)
 	);
 
 	/* Make sure we have a credible result */
-	if (loops < 4 || end_low < 100000) {
-		hprint(7, 0, loops);
-		hprint(8, 0, end_low);
+	if (loops < 4 || end_low < 50000) {
 		return(-1);
 	}
 
 	if(tsc_invariable){ end_low = correct_tsc(end_low);	}
 
-	v->clks_msec = end_low/100;	
+	v->clks_msec = end_low/25;	
 	hprint(9, 0, v->clks_msec);
 	return(v->clks_msec);
 }
